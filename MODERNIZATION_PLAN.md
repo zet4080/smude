@@ -1,6 +1,6 @@
 # Smude Project Modernization Plan
 
-**Date:** September 28, 2025  
+**Date:** September 29, 2025  
 **Current Python Version:** 3.12.6  
 **Project Status:** Legacy (Python 3.8.5, dependencies from 2020)
 
@@ -17,6 +17,9 @@ This plan outlines the modernization of the Smude (Sheet Music Dewarping) projec
 - **Size**: ~50MB (estimated)
 - **Storage**: `smude/model.ckpt` (downloaded automatically on first run)
 - **Usage**: Sheet music dewarping and binarization
+ - **Status (Conversion)**: Completed on Sep 29, 2025 → artifacts present:
+   - `smude/model_weights.pth` (pure PyTorch state_dict)
+   - `smude/model_config.pth` (architecture config)
 
 ### Model Compatibility Challenges
 
@@ -107,60 +110,40 @@ new_model.load_state_dict(torch.load("model_weights.pth"))
 **Estimated Time: 1 day**
 
 #### 1.5.1 Model Backup and Analysis
-- [ ] **Download current model** if not present: `model.ckpt`
-- [ ] **Create backup copy** of original checkpoint
-- [ ] **Test current model loading** with existing PyTorch Lightning 0.9.0
+- [x] **Download current model** if not present: `model.ckpt` (auto via extractor)
+- [ ] **Create backup copy** of original checkpoint (optional)
+- [ ] **Test current model loading** with existing PyTorch Lightning 0.9.0 (optional)
 - [ ] **Document model performance** on sample images (baseline metrics)
-- [ ] **Extract model metadata** (architecture, training info, etc.)
+- [x] **Extract model metadata** (architecture config saved to `smude/model_config.pth`)
 
 #### 1.5.2 Model Weight Extraction
-- [ ] **Create extraction script** (`scripts/extract_model_weights.py`):
-  ```python
-  # Load with PyTorch Lightning 0.9.0
-  from smude.model import load_model
-  model = load_model("smude/model.ckpt")
-  
-  # Save pure PyTorch weights
-  torch.save(model.net.state_dict(), "smude/model_weights.pth")
-  
-  # Save model config
-  config = {
-      'num_classes': 4,
-      'num_layers': 5, 
-      'features_start': 64,
-      'bilinear': True
-  }
-  torch.save(config, "smude/model_config.pth")
-  ```
-- [ ] **Verify extracted weights** load correctly in pure PyTorch
-- [ ] **Test inference equivalence** between original and extracted model
+- [x] **Create extraction script** (`scripts/extract_model_weights.py`) [lightweight, no Lightning]
+  - Reads checkpoint with `torch.load` (safe fallback included) and saves:
+    - `smude/model_weights.pth`
+    - `smude/model_config.pth`
+- [ ] **Verify extracted weights** load correctly in pure PyTorch (basic smoke pending)
+- [ ] **Test inference equivalence** between original and extracted model (pending)
 
 #### 1.5.3 Model Loading Compatibility
-- [ ] **Create dual-loader utility** that handles both old and new formats
-- [ ] **Implement fallback mechanism** for model loading
-- [ ] **Add model format detection** (checkpoint vs weights)
-- [ ] **Create model validation function** to ensure correct loading
+- [x] **Create dual-loader utility** that handles both old and new formats (`smude/loader.py`)
+- [x] **Implement fallback mechanism** for model loading (lazy legacy import)
+- [x] **Add model format detection** (auto-discovery of `model_weights.pth` vs `model.ckpt`)
+- [ ] **Create model validation function** to ensure correct loading (pending)
 
 ### Phase 2: Dependency Updates
 **Priority: High**  
 **Estimated Time: 3-4 days** *(Increased due to model compatibility)*
 
 #### 2.1 Model Compatibility (Critical First Step)
-- [ ] **Test extracted model weights** with current PyTorch version
-- [ ] **Create modern model loading function**:
+- [ ] **Test extracted model weights** with current PyTorch version (smoke test)
+- [x] **Create modern model loading function** (`smude/loader.py: load_model_flexible`):
   ```python
-  def load_model_modern(weights_path: str = None, checkpoint_path: str = None):
-      model = UNet(num_classes=4, num_layers=5, features_start=64, bilinear=True)
-      if weights_path and os.path.exists(weights_path):
-          model.load_state_dict(torch.load(weights_path))
-      elif checkpoint_path and os.path.exists(checkpoint_path):
-          # Fallback to legacy loader (requires old PyTorch Lightning)
-          legacy_model = SegModel.load_from_checkpoint(checkpoint_path)
-          model.load_state_dict(legacy_model.net.state_dict())
-      return model
+  from smude.loader import load_model_flexible
+  model = load_model_flexible()  # auto-prefers weights; falls back to legacy ckpt if needed
+  model.eval()
   ```
-- [ ] **Implement model wrapper class** for modern PyTorch Lightning
-- [ ] **Verify inference equivalence** between old and new loading methods
+- [ ] **Implement model wrapper class** for modern PyTorch Lightning (post-upgrade, optional)
+- [ ] **Verify inference equivalence** between old and new loading methods (pending)
 
 #### 2.2 Python Version Update
 - [ ] Update minimum Python requirement to 3.11
@@ -263,8 +246,8 @@ new_model.load_state_dict(torch.load("model_weights.pth"))
 ## Risk Assessment
 
 ### Critical Risk
-- **Pre-trained Model Compatibility**: The model checkpoint (`model.ckpt`) was saved with PyTorch Lightning 0.9.0 and may not load with PyTorch Lightning 2.1+
-- **Model Download Dependency**: Model is downloaded from GitHub releases on first run
+- **Pre-trained Model Compatibility**: Mitigated — converted to pure PyTorch weights (`model_weights.pth`)
+- **Model Download Dependency**: Mitigated — extractor supports auto-download with checksum via HTTP
 
 ### High Risk
 - PyTorch Lightning 0.9 → 2.1 migration (breaking changes)
@@ -284,7 +267,7 @@ new_model.load_state_dict(torch.load("model_weights.pth"))
 ## Recommended Execution Order
 
 1. **Start with Phase 1** (Infrastructure) to establish modern development practices
-2. **CRITICAL: Execute Phase 1.5** (Model Preservation) before any dependency updates
+2. Phase 1.5 (Model Preservation) — Completed on Sep 29, 2025
 3. **Proceed to Phase 2** (Dependencies) with careful testing at each step
 4. **Implement Phase 3** (Code Modernization) incrementally
 5. **Add Phase 4** (Testing/Documentation) throughout the process
@@ -321,30 +304,19 @@ model.ckpt → model_weights.pth → PyTorch 2.1+ → New Loader → Same Result
 
 ## Next Steps
 
-1. **CRITICAL FIRST STEP**: Execute Phase 1.5 (Model Preservation)
-   - Download and backup the current model
-   - Extract pure PyTorch weights before any dependency updates
-   - Test current functionality as baseline
-2. Create a backup branch of the current code
-3. Set up modern development environment
-4. Begin with Phase 1 (Infrastructure Modernization)
-5. Test thoroughly after each major change, especially model compatibility
+1. Create a backup branch of the current code
+2. Set up modern development environment (Phase 1)
+3. Run a quick smoke test with the flexible loader and a dummy input
+4. Proceed with dependency updates (Phase 2), validating model inference after each major change
+5. Add unit/integration tests and CI (Phase 4)
 6. Update documentation as changes are made
 
 ### Model Migration Priority Actions
 
-1. **Immediate** (Before any dependency updates):
-   ```bash
-   # Download model if not present
-   python -c "from smude import Smude; Smude()"
-   
-   # Backup original
-   cp smude/model.ckpt smude/model_original.ckpt
-   ```
-
-2. **Create extraction script** (see Phase 1.5.2 for details)
-3. **Test extraction** works before proceeding with PyTorch updates
-4. **Validate inference** produces identical results
+1. **Completed**: Extraction script run; artifacts present (`smude/model_weights.pth`, `smude/model_config.pth`)
+2. **Optional**: Backup original checkpoint (`Copy-Item smude\model.ckpt smude\model_original.ckpt` on PowerShell)
+3. **Next**: Run smoke test and then begin dependency upgrades
+4. **Then**: Validate inference equivalence once the modern stack is in place
 
 ---
 

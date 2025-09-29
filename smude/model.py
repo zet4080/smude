@@ -1,6 +1,10 @@
 __author__ = "Simon Waloschek"
 
-import pytorch_lightning as pl
+try:
+    import pytorch_lightning as pl  # type: ignore
+except Exception:  # Lightning optional for runtime inference
+    pl = None  # type: ignore
+
 import torch
 import torch.nn as nn
 import torch.nn.functional as F
@@ -132,15 +136,21 @@ class Up(nn.Module):
         return self.conv(x)
 
 
-class SegModel(pl.LightningModule):
-    def __init__(self, hparams):
-        super().__init__()
+if pl is not None:
+    class SegModel(pl.LightningModule):  # type: ignore[name-defined]
+        def __init__(self, hparams=None):
+            super().__init__()
 
-        self.net = UNet(num_classes=4, num_layers=5, features_start=64, bilinear=True)
+            self.net = UNet(num_classes=4, num_layers=5, features_start=64, bilinear=True)
 
-    def forward(self, x):
-        return self.net(x)
+        def forward(self, x):
+            return self.net(x)
 
-
-def load_model(checkpoint_path: str) -> pl.LightningModule:
-    return SegModel.load_from_checkpoint(checkpoint_path)
+    def load_model(checkpoint_path: str):  # -> pl.LightningModule
+        return SegModel.load_from_checkpoint(checkpoint_path)
+else:
+    def load_model(checkpoint_path: str):  # pragma: no cover
+        raise RuntimeError(
+            "pytorch_lightning is not installed. Legacy checkpoint loading is unavailable. "
+            "Use pure PyTorch weights via smude.loader.load_model_flexible instead."
+        )

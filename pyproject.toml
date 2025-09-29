@@ -1,0 +1,88 @@
+[build-system]
+requires = ["setuptools>=68", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "smude"
+version = "0.1.1.dev0"
+description = "Sheet Music Dewarping"
+readme = "README.md"
+requires-python = ">=3.11"
+license = { file = "LICENSE.md" }
+authors = [{ name = "Simon Waloschek" }]
+classifiers = [
+  "Programming Language :: Python :: 3",
+  "Programming Language :: Python :: 3 :: Only",
+  "Programming Language :: Python :: 3.11",
+  "Programming Language :: Python :: 3.12",
+  "License :: OSI Approved :: MIT License",
+  "Operating System :: OS Independent",
+  "Topic :: Scientific/Engineering :: Image Processing",
+]
+# Note: Heavy/runtime deps (torch/torchvision/opencv) are platform-specific; install as needed.
+dependencies = [
+  "numpy>=1.25",
+  "scikit-image>=0.22",
+  "scipy>=1.11",
+  # OpenCV is large; choose one variant. contrib brings extra modules.
+  "opencv-contrib-python>=4.8",
+  "tqdm>=4.66",
+  "requests>=2.31",
+]
+[project.urls]
+Homepage = "https://github.com/sonovice/smude"
+Repository = "https://github.com/sonovice/smude"
+
+[project.scripts]
+smude = "smude:main"
+
+[project.optional-dependencies]
+# Tools for development only
+dev = [
+  "black>=24.3.0",
+  "ruff>=0.6.9",
+  "mypy>=1.11.0",
+  "pre-commit>=3.7.0",
+  "pytest>=8.3",
+]
+train = [
+  "pytorch-lightning>=2.3,<3",
+]
+
+[tool.setuptools.packages.find]
+include = ["smude"]
+
+[tool.black]
+line-length = 100
+target-version = ["py311", "py312"]
+
+[tool.ruff]
+line-length = 100
+# Enable common lint rules; adjust as we modernize
+select = [
+  "E", "F",        # pycodestyle/pyflakes
+  "I",             # isort
+  "UP",            # pyupgrade
+  "B",             # flake8-bugbear
+]
+ignore = [
+  # We'll fix progressively
+]
+exclude = [
+  ".venv",
+  "build",
+  "dist",
+  "*.egg-info",
+]
+
+[tool.ruff.format]
+quote-style = "preserve"
+indent-style = "space"
+
+[tool.mypy]
+python_version = "3.11"
+ignore_missing_imports = true
+strict = false
+warn_unused_ignores = true
+show_error_codes = true
+exclude = ["^build/", "^dist/", "^\\.venv/"]
