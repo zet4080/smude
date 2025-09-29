@@ -130,6 +130,8 @@ dmypy.json
 
 # Deep Learning model checkpoint
 /smude/model.ckpt
+/smude/model_config.pth
+/smude/model_weights.pth
 
 # Demo result
 result.png

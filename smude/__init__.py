@@ -16,6 +16,7 @@ from tqdm import tqdm
 
 from .binarize import binarize
 from .model import load_model
+from .loader import load_model_flexible
 from .mrcdi import mrcdi
 from .roi import extract_roi_mask, get_border
 
@@ -58,7 +59,16 @@ class Smude():
                 print("Error: Model could not be downloaded.")
                 exit(1)
 
-        self.model = load_model(checkpoint_path)
+        # Prefer modern pure-PyTorch weights if present; otherwise fall back to legacy checkpoint
+        try:
+            self.model = load_model_flexible(
+                weights_path=os.path.join(dirname, 'model_weights.pth'),
+                checkpoint_path=checkpoint_path,
+            )
+        except Exception as e:
+            # Last resort: original behavior
+            logging.warning(f"Flexible loader failed ({e}); falling back to legacy loader.")
+            self.model = load_model(checkpoint_path)
         if self.use_gpu:
             self.model = self.model.cuda()
         self.model.freeze()
